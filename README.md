@@ -13,3 +13,43 @@
 Simple inclusion of traefik-fw-auth into an alpine container, so we can add a healthcheck.<br>
 The image is autobuilt every night.
 
+## Docker Compose
+
+``` yaml
+  traefik-fw-auth:
+    image: ghcr.io/trueosiris/traefik-fw-auth-alpine:latest
+    labels:   
+      traefik.http.middlewares.traefik-forward-auth.forwardauth.address: http://traefik-forward-auth:4181
+      traefik.http.middlewares.traefik-forward-auth.forwardauth.authResponseHeaders: X-Forwarded-User
+      traefik.http.services.traefik-forward-auth.loadbalancer.server.port: 4181
+    environment:
+      - PROVIDERS_GOOGLE_CLIENT_ID=${PROVIDERS_GOOGLE_CLIENT_ID}
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=${PROVIDERS_GOOGLE_CLIENT_SECRET}
+      - SECRET=testing
+      # INSECURE_COOKIE is required if not using a https entrypoint
+      - INSECURE_COOKIE=false
+      - LOG_LEVEL=info
+      - COOKIE_DOMAIN=your.domain
+      - AUTH_HOST=authgoogle.your.domain
+    ports:
+      - 4181:4181
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"      
+    networks:
+      - proxy      
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "--header=X-Forwarded-Proto: https", "http://localhost:4181/_ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+```
+
+## Documentation and Useful info
+
+https://hub.docker.com/r/thomseddon/traefik-forward-auth<br>
+https://console.cloud.google.com/apis/credentials?project=traefik-2factor<br>
